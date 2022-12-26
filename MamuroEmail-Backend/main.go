@@ -8,109 +8,103 @@ import (
 	"strings"
 )
 
-type File struct {
-	Name string `json:"name"`
+type ZincSearchRecord struct {
+	Username  string `json:"username"`
+	Directory string `json:"directory"`
+	File 	string `json:"file_name"`
 	Content string `json:"content"`
 }
 
 type IndexDirectory struct {
-	Name string `json:"name"`
-	Directory []*Directory `json:"directories"`
+	Name string `json:"index"`
+	Directory []*ZincSearchRecord `json:"records"`
 }
 
-type Directory struct {
-	Name string `json:"name"`
-	File []*File `json:"files"`
-}
 
+type File struct {
+	Name string `json:"Mail"`
+	Content string `json:"content"`
+}
 func check(e error) {
     if e != nil {
         panic(e)
     }
 }
 
-//TODO: hacer que este metodo no retorne nada
-func indexingDirectory(path string,dir []*Directory) []*IndexDirectory {
+func indexingDirectory(path string) []*IndexDirectory{
 	var index= []*IndexDirectory{}
 	filepath.Walk(path, func(path1 string, info os.FileInfo, err error) error {
 		check(err)
 		if info.IsDir() {
+			lenDir:= strings.Split(path1, "\\")
 			if len(strings.Split(path1, "\\")) == 2 {
 				index= append(index, &IndexDirectory{
-				Name: info.Name(), Directory: dir_to_json(path1, dir,info.Name())})
+				Name: lenDir[0], Directory: dir_to_json(path1,info.Name())})
 		}
 	}
-
 		return nil
 	})
 	return index
 }
 
-func dir_to_json(path string, dir []*Directory,root string) []*Directory {
-	// prueba:=""
-	var dir1 =dir
+func dir_to_json(path string,root string) []*ZincSearchRecord {
+	var newRecord []*ZincSearchRecord
 	filepath.Walk(path, func(path1 string, info os.FileInfo, err error) error {
 		check(err)
-		if info.IsDir() {
-
+		if !info.IsDir() {
 			nueva:= strings.Split(path1, "\\")
 			if len(nueva) >= 3 {
-			dir1= append(dir1, &Directory{
-							Name: info.Name(), File: readFiles(path1)})
-						}
-			if len(nueva) == 3 {
-			fmt.Println(root)
+				newFile:= readFiles(path1)
+				newRecord= append(newRecord, &ZincSearchRecord{
+					Username: nueva[1],
+					Directory: nueva[2],
+					File: newFile[0].Name,
+					Content: newFile[0].Content,
+				})
 			}
-						// dir=nil
-			// if len(nueva) >= 3 {
-			// 	if prueba != nueva[2] {
-			// 		prueba = nueva[2]
-			// 		dir= append(dir, &Directory{
-			// 			Name: info.Name(), File: readFiles(path1)})
-			// 		fmt.Println(dir[0].File[0])
-			// 		dir=nil
-			// 		//crear cada instancia de la carpeta y sus contenidos
-			// 		//enviar a la base de datos el nombre de la carpeta con sus contenidos
-			// 	}
-			// }
-			
-			// fmt.Println(nameFile)
 		}
 		return nil
 	})
-	return dir1
+	return newRecord
 }
 
 func readFiles(path string) []*File{
 	var nameFile []*File
-	filepath.Walk(path, func(path1 string, info os.FileInfo, err error) error {
-		check(err)
-		if !info.IsDir() {
-			dat, err := os.ReadFile(path1)
+			nueva:= strings.Split(path, "\\")
+			lenNueva:= len(nueva)
+			dat, err := os.ReadFile(path)
 			if err != nil {
 				panic(err)
 			}
-			// dat := bufio.NewReader(f)
-			// b4, err1 := dat.Peek(5)
-			// if err1 != nil {
-			// 	panic(err1)
-			// }
-
-			nameFile= append(nameFile, &File{
-				Name: info.Name(), Content: string(dat)})
-				
-			// fmt.Println(path1)
-		} 
-		return nil
-	})
+			nameFile= append(nameFile, &File {
+				Name: nueva[lenNueva-2]+"_"+nueva[lenNueva-1],
+				Content: string(dat),
+			})
+		
 	return nameFile
 }
 
+func createIndex (path string) {
+
+	// var dir []*Directory
+	// indexingDirectory("enron_mail_20110402/maildir", dir)
+}
+
 func main() {
-	var dir []*Directory
+	// user:="admin"
+	// password:="Complexpass#123"
+	// index:="maildir"
+	// rootFiles:="enron_mail_20110402/maildir"
+	// zinc_host := "http://localhost:4080"
+
+	// router:= chi.NewRouter()
+	// router.Get("/api/v1/index", func(w http.ResponseWriter, r *http.Request) {
+		
+	// })
+
 	//se crea el index
 
-	nameFile:= indexingDirectory("maildir", dir)
+	nameFile:= indexingDirectory("maildir")
 
 	fmt.Println(nameFile)
 	_,err:= os.Stat("maildir.json")
@@ -129,6 +123,5 @@ func main() {
 	check(err)
 	err=file.Sync()
 	check(err)
-	// ENDPOINT := "http://localhost:4080"
 	
 }
