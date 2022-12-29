@@ -3,10 +3,17 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-chi/chi"
 )
+
+
 
 type ZincSearchRecord struct {
 	Username  string `json:"username"`
@@ -31,7 +38,7 @@ func check(e error) {
     }
 }
 
-func indexingDirectory(path string) []*IndexDirectory{
+func indexingDirectory(path string) {
 	var index= []*IndexDirectory{}
 	filepath.Walk(path, func(path1 string, info os.FileInfo, err error) error {
 		check(err)
@@ -40,11 +47,12 @@ func indexingDirectory(path string) []*IndexDirectory{
 			if len(strings.Split(path1, "\\")) == 2 {
 				index= append(index, &IndexDirectory{
 				Name: lenDir[0], Directory: dir_to_json(path1,info.Name())})
+				createJson(index)
+				index=nil
 		}
 	}
 		return nil
 	})
-	return index
 }
 
 func dir_to_json(path string,root string) []*ZincSearchRecord {
@@ -84,18 +92,130 @@ func readFiles(path string) []*File{
 	return nameFile
 }
 
-func createIndex (path string) {
 
+//create index function with chi router
+func createIndex(w http.ResponseWriter, r *http.Request) {
+	index:="maildir"
+	configIndex:= `{
+		"name":"`+index+`",
+		"storage_type":"disk",
+		"shard_num":1,
+		"mappings":{
+			"properties":{
+				"username":{
+					"type":"text",
+					"index":true,
+					"store":true,
+					"highlightable":true
+				},
+				"sub_folder":{
+					"type":"text",
+					"index":true,
+					"store":true,
+					"highlightable":true
+				},
+				"file_name":{
+					"type":"text",
+					"index":true,
+					"store":true,
+					"highlightable":true
+				},
+				"content":{
+					"type":"text",
+					"index":true,
+					"store":true,
+					"highlightable":true
+				}
+			}
+		}
+	}`
+	rootFiles:="maildir"
+	resp, err := postAPI("/api/index",configIndex)
+	check(err)
+	defer resp.Body.Close()
+	if resp.StatusCode == 200 {
+		w.Write([]byte("Index created"))
+		w.Write([]byte("Indexing"))
+		indexingDirectory(rootFiles)
+	} else if resp.StatusCode != 200 {
+		w.Write([]byte("Index already exists"))
+	}
+	// body, err := io.ReadAll(resp.Body)
+	// check(err)
+	// fmt.Println(string(body))
+
+	// var index= []*IndexDirectory{}
 	// var dir []*Directory
 	// indexingDirectory("enron_mail_20110402/maildir", dir)
+	// index= append(index, &IndexDirectory{
+	// 	Name: "maildir", Directory: dir})
+	// createJson(index)
+	// index=nil
+	// fmt.Println("Indexing")
+	// w.Write([]byte("Indexing"))
 }
 
+
+func createJson(index []*IndexDirectory) {
+	// var dir []*Directory
+	// name:= index[0].Directory[0].Username+".json"
+	newJson, err:= json.Marshal(index[0])
+	check(err)
+	resp, err:= postAPI("/api/_bulkv2",string(newJson))
+	defer resp.Body.Close()
+	 body, err := io.ReadAll(resp.Body)
+	 check(err)
+	 fmt.Println(string(body))
+	if resp.StatusCode == 200 {
+		log.Println("Indexing")
+	} else if resp.StatusCode != 200 {
+		body, err := io.ReadAll(resp.Body)
+		check(err)
+		log.Println(string(body))
+	}
+	// indexingDirectory("enron_mail_20110402/maildir", dir)
+	// _,err:= os.Stat(name)
+	// if os.IsNotExist(err) {
+	// 	file, err:= os.Create(name)
+	// 	check(err)
+	// 	defer file.Close()
+	// }
+	// file, err:= os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0644)
+	// check(err)
+	// defer file.Close()
+	// nuevo:=&index
+	// b, err := json.Marshal(nuevo)
+	// check(err)
+	// _, err = file.WriteString(string(b))
+	// check(err)
+	// err=file.Sync()
+	// check(err)
+}
+
+func postAPI(endpoint string, body string) (*http.Response, error) {
+	user:="admin"
+	password:="Complexpass#123"
+	zinc_host := "http://localhost:4080"
+	req, err := http.NewRequest("POST", zinc_host+endpoint, strings.NewReader(body))
+	check(err)
+	req.SetBasicAuth(user,password)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	check(err)
+	return resp, err
+}
+
+
 func main() {
-	// user:="admin"
-	// password:="Complexpass#123"
-	// index:="maildir"
-	// rootFiles:="enron_mail_20110402/maildir"
-	// zinc_host := "http://localhost:4080"
+	PORT:= "8080"
+
+	log.Printf("Serving on port %s", PORT)
+	r:= chi.NewRouter()
+	r.Get("/api/index", createIndex)
+
+
+	log.Fatal(http.ListenAndServe(":" + PORT, r))
+	
 
 	// router:= chi.NewRouter()
 	// router.Get("/api/v1/index", func(w http.ResponseWriter, r *http.Request) {
@@ -104,24 +224,6 @@ func main() {
 
 	//se crea el index
 
-	nameFile:= indexingDirectory("maildir")
-
-	fmt.Println(nameFile)
-	_,err:= os.Stat("maildir.json")
-	if os.IsNotExist(err) {
-		file, err:= os.Create("maildir.json")
-		check(err)
-		defer file.Close()
-	}
-	file, err:= os.OpenFile("maildir.json", os.O_APPEND|os.O_WRONLY, 0644)
-	check(err)
-	defer file.Close()
-	nuevo:=&nameFile
-	b, err := json.Marshal(nuevo)
-	check(err)
-	_, err = file.WriteString(string(b))
-	check(err)
-	err=file.Sync()
-	check(err)
+	
 	
 }
