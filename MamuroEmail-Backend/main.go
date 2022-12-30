@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
@@ -248,5 +249,4 @@ func main() {
 	r.Get("/api/index", createIndex)
 	r.Post("/api/search", searchMaildir)
 	log.Fatal(http.ListenAndServe(":" + PORT, r))
-
 }
