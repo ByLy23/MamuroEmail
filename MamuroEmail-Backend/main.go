@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,25 +14,36 @@ import (
 	"github.com/go-chi/chi"
 )
 
+//Structs
+// type Query struct {
+// 	Term string `json:"term"`
+// 	Start_time string `json:"start_time"`
+// 	End_time string `json:"end_time"`
+// }
 
-
+// type Search struct {
+// 	SearchType string `json:"search_type"`
+// 	Query Query `json:"query"`
+// 	From int `json:"from"`
+// 	Max_results int `json:"max_results"`
+// 	Source []string `json:"_source"`
+// }
 type ZincSearchRecord struct {
 	Username  string `json:"username"`
 	Directory string `json:"directory"`
 	File 	string `json:"file_name"`
 	Content string `json:"content"`
 }
-
 type IndexDirectory struct {
 	Name string `json:"index"`
 	Directory []*ZincSearchRecord `json:"records"`
 }
-
-
 type File struct {
 	Name string `json:"Mail"`
 	Content string `json:"content"`
 }
+
+// functions
 func check(e error) {
     if e != nil {
         panic(e)
@@ -92,7 +104,49 @@ func readFiles(path string) []*File{
 	return nameFile
 }
 
+func readingBody(r io.ReadCloser) string {
+	body, err := io.ReadAll(r)
+	check(err)
+	return string(body)
+}
 
+func createJson(index []*IndexDirectory) {
+	// var dir []*Directory
+	// name:= index[0].Directory[0].Username+".json"
+	newJson, err:= json.Marshal(index[0])
+	check(err)
+	resp, err:= postAPI("/api/_bulkv2",string(newJson))
+	defer resp.Body.Close()
+	 body, err := io.ReadAll(resp.Body)
+	 check(err)
+	 fmt.Println(string(body))
+	if resp.StatusCode == 200 {
+		log.Println("Indexing")
+	} else if resp.StatusCode != 200 {
+		body, err := io.ReadAll(resp.Body)
+		check(err)
+		log.Println(string(body))
+	}
+	// indexingDirectory("enron_mail_20110402/maildir", dir)
+	// _,err:= os.Stat(name)
+	// if os.IsNotExist(err) {
+	// 	file, err:= os.Create(name)
+	// 	check(err)
+	// 	defer file.Close()
+	// }
+	// file, err:= os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0644)
+	// check(err)
+	// defer file.Close()
+	// nuevo:=&index
+	// b, err := json.Marshal(nuevo)
+	// check(err)
+	// _, err = file.WriteString(string(b))
+	// check(err)
+	// err=file.Sync()
+	// check(err)
+}
+
+//requests
 //create index function with chi router
 func createIndex(w http.ResponseWriter, r *http.Request) {
 	index:="maildir"
@@ -143,7 +197,6 @@ func createIndex(w http.ResponseWriter, r *http.Request) {
 	// body, err := io.ReadAll(resp.Body)
 	// check(err)
 	// fmt.Println(string(body))
-
 	// var index= []*IndexDirectory{}
 	// var dir []*Directory
 	// indexingDirectory("enron_mail_20110402/maildir", dir)
@@ -153,43 +206,6 @@ func createIndex(w http.ResponseWriter, r *http.Request) {
 	// index=nil
 	// fmt.Println("Indexing")
 	// w.Write([]byte("Indexing"))
-}
-
-
-func createJson(index []*IndexDirectory) {
-	// var dir []*Directory
-	// name:= index[0].Directory[0].Username+".json"
-	newJson, err:= json.Marshal(index[0])
-	check(err)
-	resp, err:= postAPI("/api/_bulkv2",string(newJson))
-	defer resp.Body.Close()
-	 body, err := io.ReadAll(resp.Body)
-	 check(err)
-	 fmt.Println(string(body))
-	if resp.StatusCode == 200 {
-		log.Println("Indexing")
-	} else if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		check(err)
-		log.Println(string(body))
-	}
-	// indexingDirectory("enron_mail_20110402/maildir", dir)
-	// _,err:= os.Stat(name)
-	// if os.IsNotExist(err) {
-	// 	file, err:= os.Create(name)
-	// 	check(err)
-	// 	defer file.Close()
-	// }
-	// file, err:= os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0644)
-	// check(err)
-	// defer file.Close()
-	// nuevo:=&index
-	// b, err := json.Marshal(nuevo)
-	// check(err)
-	// _, err = file.WriteString(string(b))
-	// check(err)
-	// err=file.Sync()
-	// check(err)
 }
 
 func postAPI(endpoint string, body string) (*http.Response, error) {
@@ -205,25 +221,32 @@ func postAPI(endpoint string, body string) (*http.Response, error) {
 	return resp, err
 }
 
+func searchMaildir(w http.ResponseWriter, r *http.Request) {
+	req:=readingBody(r.Body)
+	fmt.Println(string(req))
+	resp, err:= postAPI("/api/maildir/_search",string(req))
+	check(err)
+	defer resp.Body.Close()
+	if resp.StatusCode == 200 {
+		//return search results
+		w.Write([]byte(readingBody(resp.Body)))
 
+	} else if resp.StatusCode != 200 {
+		w.Write([]byte("Error"))
+	}
+	// var q Query
+	// var search Search
+	// json.NewDecoder(r.Body).Decode(&q)
+	// resp, err:= postAPI("/api/maildir/_search",r.Body)
+}
+
+//main
 func main() {
 	PORT:= "8080"
 
 	log.Printf("Serving on port %s", PORT)
 	r:= chi.NewRouter()
 	r.Get("/api/index", createIndex)
-
-
+	r.Post("/api/search", searchMaildir)
 	log.Fatal(http.ListenAndServe(":" + PORT, r))
-	
-
-	// router:= chi.NewRouter()
-	// router.Get("/api/v1/index", func(w http.ResponseWriter, r *http.Request) {
-		
-	// })
-
-	//se crea el index
-
-	
-	
 }
