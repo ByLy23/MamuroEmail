@@ -11,7 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 //Structs
@@ -149,7 +150,7 @@ func createJson(index []*IndexDirectory) {
 //requests
 //create index function with chi router
 func createIndex(w http.ResponseWriter, r *http.Request) {
-	index:="maildir"
+	index:="maildir1"
 	configIndex:= `{
 		"name":"`+index+`",
 		"storage_type":"disk",
@@ -246,7 +247,14 @@ func main() {
 
 	log.Printf("Serving on port %s", PORT)
 	r:= chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Mount("/debug/profile",middleware.Profiler())
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Welcome to the search engine"))
+	})
+
 	r.Get("/api/index", createIndex)
 	r.Post("/api/search", searchMaildir)
+
 	log.Fatal(http.ListenAndServe(":" + PORT, r))
 }
