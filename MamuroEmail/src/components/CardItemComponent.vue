@@ -16,10 +16,5 @@ defineProps<{
       {{ content.substring(0, 100) }}
     </p>
     <h6 class="text-sm text-gray-300 mb-5">Encontrado: {{ date }}</h6>
-    <a
-      href="#"
-      class="rounded-lg py-2 px-4 text-center text-white bg-yellow-400 hover:bg-yellow-500"
-      >Ver Mas...</a
-    >
   </article>
 </template>

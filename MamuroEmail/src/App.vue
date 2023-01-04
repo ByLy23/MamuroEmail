@@ -3,6 +3,7 @@ import { RouterLink, RouterView } from "vue-router";
 import HelloWorld from "./components/HelloWorld.vue";
 import CardComponent from "./components/CardComponent.vue";
 import SearchComponent from "./components/SearchComponent.vue";
+import ModalComponent from "./components/ModalComponent.vue";
 </script>
 
 <template>
@@ -10,6 +11,7 @@ import SearchComponent from "./components/SearchComponent.vue";
     <h1 className="text-3xl">Mamuro Email</h1>
     <SearchComponent />
     <CardComponent />
+    <ModalComponent />
   </div>
   <!-- <header>
     <img
