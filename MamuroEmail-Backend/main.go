@@ -11,7 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/cors"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 //Structs
@@ -149,6 +152,7 @@ func createJson(index []*IndexDirectory) {
 //requests
 //create index function with chi router
 func createIndex(w http.ResponseWriter, r *http.Request) {
+	configurarCorsOptions(&w,r)
 	index:="maildir"
 	configIndex:= `{
 		"name":"`+index+`",
@@ -220,19 +224,39 @@ func postAPI(endpoint string, body string) (*http.Response, error) {
 	check(err)
 	return resp, err
 }
+func configurarCorsOptions(w *http.ResponseWriter, request *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
 
 func searchMaildir(w http.ResponseWriter, r *http.Request) {
+	// configurarCorsOptions(&w,r)
 	req:=readingBody(r.Body)
-	fmt.Println(string(req))
+	fmt.Println(r.Body)
 	resp, err:= postAPI("/api/maildir/_search",string(req))
 	check(err)
+
 	defer resp.Body.Close()
+	w.WriteHeader(resp.StatusCode)
 	if resp.StatusCode == 200 {
 		//return search results
-		w.Write([]byte(readingBody(resp.Body)))
-
+		data:= readingBody(resp.Body)
+		// dataJson,_:= json.Marshal(data)
+		w.Header().Set("Content-Type", "application/json")
+		
+		w.Write([]byte(data))
+		return
 	} else if resp.StatusCode != 200 {
-		w.Write([]byte("Error"))
+		type  Message struct {
+			Message string `json:"message"`
+		}
+		//return error
+		msjInvalido:= Message{Message: "Invalid query"}
+		msjInvalidoJson,_:= json.Marshal(msjInvalido)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(msjInvalidoJson))
+		return
 	}
 	// var q Query
 	// var search Search
@@ -246,7 +270,34 @@ func main() {
 
 	log.Printf("Serving on port %s", PORT)
 	r:= chi.NewRouter()
+	//change to no require auth for options
+	
+	
+	// accept cors access control origins
+	r.Use(middleware.AllowContentType("application/json"))
+	//header for cors
+	r.Use(middleware.SetHeader("Access-Control-Allow-Origin", "*"))
+	r.Use(middleware.SetHeader("Access-Control-Allow-Methods", "OPTIONS,POST,GET"))
+	r.Use(middleware.SetHeader("Access-Control-Allow-Headers", "*"))
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:     []string{"http://localhost:5500"},
+		AllowedMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+		AllowedHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		ExposedHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge: 300,
+	}))
 	r.Get("/api/index", createIndex)
+	r.Post("/hola", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Print("hola")
+		w.Write([]byte("Hola"))
+	})
+	r.Options("/hola", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Print("hola")
+		w.Write([]byte("Hola"))
+	})
+
+	r.Options("/api/search", searchMaildir)
 	r.Post("/api/search", searchMaildir)
 	log.Fatal(http.ListenAndServe(":" + PORT, r))
 }
