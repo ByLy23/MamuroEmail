@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 //Structs
@@ -120,12 +120,7 @@ func createJson(index []*IndexDirectory) {
 	defer resp.Body.Close()
 	 body, err := io.ReadAll(resp.Body)
 	 check(err)
-	 fmt.Println(string(body))
-	if resp.StatusCode == 200 {
-		log.Println("Indexing")
-	} else if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		check(err)
+	if resp.StatusCode != 200 {
 		log.Println(string(body))
 	}
 	// indexingDirectory("enron_mail_20110402/maildir", dir)
@@ -150,7 +145,8 @@ func createJson(index []*IndexDirectory) {
 //requests
 //create index function with chi router
 func createIndex(w http.ResponseWriter, r *http.Request) {
-	index:="maildir1"
+	configurarCorsOptions(&w,r)
+	index:="maildir"
 	configIndex:= `{
 		"name":"`+index+`",
 		"storage_type":"disk",
@@ -221,19 +217,38 @@ func postAPI(endpoint string, body string) (*http.Response, error) {
 	check(err)
 	return resp, err
 }
+func configurarCorsOptions(w *http.ResponseWriter, request *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
 
 func searchMaildir(w http.ResponseWriter, r *http.Request) {
+	// configurarCorsOptions(&w,r)
 	req:=readingBody(r.Body)
-	fmt.Println(string(req))
 	resp, err:= postAPI("/api/maildir/_search",string(req))
 	check(err)
+
 	defer resp.Body.Close()
+	w.WriteHeader(resp.StatusCode)
 	if resp.StatusCode == 200 {
 		//return search results
-		w.Write([]byte(readingBody(resp.Body)))
-
+		data:= readingBody(resp.Body)
+		// dataJson,_:= json.Marshal(data)
+		w.Header().Set("Content-Type", "application/json")
+		
+		w.Write([]byte(data))
+		return
 	} else if resp.StatusCode != 200 {
-		w.Write([]byte("Error"))
+		type  Message struct {
+			Message string `json:"message"`
+		}
+		//return error
+		msjInvalido:= Message{Message: "Invalid query"}
+		msjInvalidoJson,_:= json.Marshal(msjInvalido)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(msjInvalidoJson))
+		return
 	}
 	// var q Query
 	// var search Search
@@ -247,13 +262,26 @@ func main() {
 
 	log.Printf("Serving on port %s", PORT)
 	r:= chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Mount("/debug/profile",middleware.Profiler())
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to the search engine"))
-	})
-
+	//change to no require auth for options
+	
+	
+	// accept cors access control origins
+	r.Use(middleware.AllowContentType("application/json"))
+	//header for cors
+	r.Use(middleware.SetHeader("Access-Control-Allow-Origin", "*"))
+	r.Use(middleware.SetHeader("Access-Control-Allow-Methods", "OPTIONS,POST,GET"))
+	r.Use(middleware.SetHeader("Access-Control-Allow-Headers", "*"))
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:     []string{"*"},
+		AllowedMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+		AllowedHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		ExposedHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge: 300,
+	}))
 	r.Get("/api/index", createIndex)
+
+	r.Options("/api/search", searchMaildir)
 	r.Post("/api/search", searchMaildir)
 
 	log.Fatal(http.ListenAndServe(":" + PORT, r))
