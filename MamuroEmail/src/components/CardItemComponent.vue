@@ -15,7 +15,7 @@ defineProps<{
       <div
         class="flex flex-col border-b sm:border-b-0 items-center p-8 sm:px-4 sm:h-full sm:justify-center"
       >
-        <p class="text-7xl font-bold text-[#0ed3cf] rounded-full">
+        <p class="text-7xl font-bold text-[#2292A4] rounded-full">
           {{ title.substring(0, 1).toUpperCase() }}
         </p>
       </div>

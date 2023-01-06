@@ -5,7 +5,7 @@ const apiStorage = axios.create({
     "Content-Type": "application/json",
   },
 });
-export const getSearch = async (phrase, pageNumber = 1) => {
+export const getSearch = async (phrase: string, pageNumber = 1) => {
   const body = JSON.stringify({
     search_type: "matchphrase",
     query: {

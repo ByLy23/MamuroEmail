@@ -1,5 +1,4 @@
 <template>
-  <!-- This is an example component -->
   <div class="flex items-center justify-center mb-10">
     <div class="flex justify-center items-center space-x-4">
       <button
@@ -8,7 +7,7 @@
       >
         &lt;
       </button>
-      <div class="text-slate-500">{{ currentPage }} /{{ maxPage }}</div>
+      <div class="text-slate-200">{{ currentPage }} /{{ maxPage }}</div>
       <button
         @click="increment"
         class="border rounded-md bg-gray-100 px-2 py-1 text-3xl leading-6 text-slate-400 transition hover:bg-gray-200 hover:text-slate-500 cursor-pointer shadow-sm"

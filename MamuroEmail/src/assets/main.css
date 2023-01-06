@@ -4,8 +4,8 @@
 @tailwind utilities;
 body {
   font-family: "Inter", sans-serif;
-  background-color: #475257;
-  color: #e0e6e9;
+  background-color: #0f0a0a;
+  color: #f5efed;
 }
 
 .contenedor {
