@@ -11,3 +11,8 @@ body {
 .contenedor {
   margin-top: 10rem;
 }
+
+.font_small {
+  font-size: 0.8rem;
+  word-break: break-word;
+}

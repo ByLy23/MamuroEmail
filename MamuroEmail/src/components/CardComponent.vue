@@ -1,32 +1,45 @@
 <script setup lang="ts">
+import { defineComponent } from "vue";
 import CardItemComponent from "./CardItemComponent.vue";
-const items = [
-  {
-    title: "Allen-p",
-    content: "Message from to the future...",
-    file: "allen-p.png",
-    root: "allen-p",
-    date: "08/10/2022",
-  },
-  {
-    title: "Al2len-p",
-    content: "Message from to the future...",
-    file: "alle2n-p.png",
-    root: "al2len-p",
-    date: "082/10/2022",
-  },
-];
+import PaginationComponent from "./PaginationComponent.vue";
 </script>
 <template>
   <ul class="flex flex-row gap-3 flex-wrap ml-7 mr-7 justify-center mb-10">
-    <li v-for="item in items" :key="item.title">
+    <li v-for="item in items" :key="item._id">
       <CardItemComponent
-        :title="item.title"
-        :content="item.content"
-        :root="item.root"
-        :file="item.file"
-        :date="item.date"
+        :title="item._source.username"
+        :content="item._source.content"
+        :root="item._source.directory"
+        :file="item._source.file_name"
       />
     </li>
   </ul>
+  <div v-if="items.length !== 0">
+    <PaginationComponent
+      :items="items"
+      :increment="increment"
+      :currentPage="currentPage"
+      :maxPage="maxPage"
+      :decrement="decrement"
+    />
+  </div>
 </template>
+<script lang="ts">
+export default defineComponent({
+  name: "CardComponent",
+  components: {
+    CardItemComponent,
+    PaginationComponent,
+  },
+  props: ["items", "increment", "currentPage", "maxPage", "decrement"],
+  data() {
+    return {
+      items: this.items,
+      increment: this.increment,
+      decrement: this.decrement,
+      currentPage: this.currentPage,
+      maxPage: this.maxPage,
+    };
+  },
+});
+</script>

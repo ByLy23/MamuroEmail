@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,10 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-chi/cors"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 //Structs
@@ -122,12 +120,7 @@ func createJson(index []*IndexDirectory) {
 	defer resp.Body.Close()
 	 body, err := io.ReadAll(resp.Body)
 	 check(err)
-	 fmt.Println(string(body))
-	if resp.StatusCode == 200 {
-		log.Println("Indexing")
-	} else if resp.StatusCode != 200 {
-		body, err := io.ReadAll(resp.Body)
-		check(err)
+	if resp.StatusCode != 200 {
 		log.Println(string(body))
 	}
 	// indexingDirectory("enron_mail_20110402/maildir", dir)
@@ -233,7 +226,6 @@ func configurarCorsOptions(w *http.ResponseWriter, request *http.Request) {
 func searchMaildir(w http.ResponseWriter, r *http.Request) {
 	// configurarCorsOptions(&w,r)
 	req:=readingBody(r.Body)
-	fmt.Println(r.Body)
 	resp, err:= postAPI("/api/maildir/_search",string(req))
 	check(err)
 
@@ -280,7 +272,7 @@ func main() {
 	r.Use(middleware.SetHeader("Access-Control-Allow-Methods", "OPTIONS,POST,GET"))
 	r.Use(middleware.SetHeader("Access-Control-Allow-Headers", "*"))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:     []string{"http://localhost:5500"},
+		AllowedOrigins:     []string{"*"},
 		AllowedMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
 		AllowedHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
 		ExposedHeaders:    []string{"Content-Length"},
@@ -288,14 +280,6 @@ func main() {
 		MaxAge: 300,
 	}))
 	r.Get("/api/index", createIndex)
-	r.Post("/hola", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Print("hola")
-		w.Write([]byte("Hola"))
-	})
-	r.Options("/hola", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Print("hola")
-		w.Write([]byte("Hola"))
-	})
 
 	r.Options("/api/search", searchMaildir)
 	r.Post("/api/search", searchMaildir)

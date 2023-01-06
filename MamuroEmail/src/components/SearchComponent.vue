@@ -1,4 +1,3 @@
-<script lang="ts" src="./SearchComponent.ts" />
 <template>
   <link
     rel="stylesheet"
@@ -27,6 +26,7 @@
         </div>
         <input
           type="text"
+          v-model="searchQuery"
           id="simple-search"
           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
           placeholder="Search"
@@ -35,7 +35,7 @@
       </div>
       <button
         type="button"
-        @click="search('simple-search', 3)"
+        @click="search(1)"
         class="p-2.5 ml-2 text-sm font-medium text-white bg-blue-700 rounded-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
       >
         <svg
@@ -55,4 +55,82 @@
       </button>
     </form>
   </div>
+  <div class="mt-10 flex items-center justify-center flex-col gap-5">
+    <CardComponent
+      :items="items"
+      :increment="increment"
+      :maxPage="maxPage"
+      :currentPage="currentPage"
+      :decrement="decrement"
+    />
+  </div>
 </template>
+<script lang="ts">
+import { defineComponent } from "vue";
+import { getSearch } from "../api/getSearch";
+import CardComponent from "./CardComponent.vue";
+import PaginationComponent from "./PaginationComponent.vue";
+export default defineComponent({
+  name: "SearchComponent",
+  data() {
+    return {
+      searchQuery: "",
+      items: [],
+      increment: this.incrementPage,
+      currentPage: 1,
+      maxPage: 1,
+      decrement: this.decrementPage,
+    };
+  },
+  methods: {
+    async search(currentPage = 1) {
+      const search = await getSearch(this.searchQuery, currentPage);
+      const { total, hits } = search.hits;
+      localStorage.setItem(
+        "search_elements",
+        JSON.stringify({
+          maxPages: Math.ceil(total.value / 20),
+          currentPage: currentPage,
+        })
+      );
+      console.log(hits);
+      this.items = hits;
+      this.maxPage = Math.ceil(total.value / 20);
+      // this.items = search;
+    },
+    incrementPage() {
+      const infoPages = localStorage.getItem("search_elements") || "";
+      const { maxPages, currentPage } = JSON.parse(infoPages);
+      if (currentPage < maxPages) {
+        localStorage.setItem(
+          "search_elements",
+          JSON.stringify({
+            maxPages,
+            currentPage: currentPage + 1,
+          })
+        );
+        this.currentPage = currentPage + 1;
+
+        this.search(currentPage + 1);
+      }
+    },
+    decrementPage() {
+      const infoPages = localStorage.getItem("search_elements") || "";
+      const { maxPages, currentPage } = JSON.parse(infoPages);
+      console.log("a");
+      if (currentPage > 1) {
+        localStorage.setItem(
+          "search_elements",
+          JSON.stringify({
+            maxPages,
+            currentPage: currentPage - 1,
+          })
+        );
+        this.currentPage = currentPage - 1;
+        this.search(currentPage - 1);
+      }
+    },
+  },
+  components: { CardComponent, PaginationComponent },
+});
+</script>

@@ -10,8 +10,6 @@ import PaginationComponent from "./components/PaginationComponent.vue";
   <div class="contenedor flex items-center justify-center flex-col gap-5">
     <h1 className="text-3xl">Mamuro Email</h1>
     <SearchComponent />
-    <CardComponent />
-    <PaginationComponent />
   </div>
   <!-- <header>
     <img
